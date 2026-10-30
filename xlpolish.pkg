@@ -1,0 +1,17 @@
+v 3
+d 'XLPOLISH': finishing touches for Excel files written by putexcel or export excel
+d
+d xlpolish adds what putexcel and export excel cannot set: freeze panes,
+d filter dropdowns, auto-fit column widths, conditional formatting (colour
+d scales, data bars, highlight rules), in-cell dropdown lists, cell notes,
+d row and column grouping, sheet protection with editable cells, hidden
+d sheets, tab colours, zoom and print setup. It runs on Stata's built-in
+d Java and needs no Excel, Python or PowerShell. Requires Stata 16 or newer.
+d
+d Author: Fahad Mirza
+d
+d Distribution-Date: 20261030
+f xlpolish.ado
+f xlpolish.sthlp
+f xlpolish.jar
+a xlpolish_test.do

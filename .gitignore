@@ -1,0 +1,12 @@
+# Stata test outputs
+test_output/
+xlpolish_test_output/
+# Java-side test working folder
+tests/work/
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+~$*
+
+# Python bytecode
+__pycache__/

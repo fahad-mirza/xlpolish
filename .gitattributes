@@ -1,0 +1,2 @@
+# The jar is a binary; keep git from touching its bytes
+*.jar binary

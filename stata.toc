@@ -1,0 +1,3 @@
+v 3
+d xlpolish: finishing touches for Excel files written by putexcel or export excel
+p xlpolish Freeze panes, filters, auto-fit widths, conditional formatting, dropdowns, notes, grouping, protection
