@@ -9,8 +9,8 @@ hidden sheets and print setup, all from one command in your do-file.
 
 ## See it in action
 
-<!-- Walkthrough video: edit this file on github.com and drag xlpolish_walkthrough.mp4
-     onto this line. GitHub uploads it and replaces this comment with a playable video. -->
+https://github.com/user-attachments/assets/ab969b24-f1f4-451a-b0de-7d4a97db2d25
+
 
 ## What you need
 
