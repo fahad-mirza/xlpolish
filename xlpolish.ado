@@ -3,6 +3,7 @@
 *! freeze panes, filters, column widths, conditional formatting, dropdowns,
 *! notes, grouping, protection, hidden sheets, print setup and sheet appearance.
 *! Uses Stata's built-in Java (Stata 16+).
+*! Author: Fahad Mirza  https://github.com/fahad-mirza/xlpolish
 program define xlpolish, rclass
     version 16
 

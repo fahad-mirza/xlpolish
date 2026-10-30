@@ -378,12 +378,35 @@ log and issue reports: {browse "https://github.com/fahad-mirza/xlpolish"}.
 {title:Requirements}
 
 {pstd}
-Stata 16 or newer. {cmd:xlpolish.jar} must be on the {helpb adopath} next to
-{cmd:xlpolish.ado}; {cmd:net install} and copying the files into your PERSONAL
-folder both do this.
+Stata 16 or newer, on Windows, macOS or Linux. Nothing else: {cmd:xlpolish} is
+written in Java and runs on the Java that comes with Stata, so there is no Java to
+install, and it does not use Excel, Python, R, PowerShell or macros.
+{cmd:xlpolish.jar} must be on the {helpb adopath} next to {cmd:xlpolish.ado};
+{cmd:net install} and copying the files into your PERSONAL folder both do this.
 
 {pstd}
 A test do-file comes with the package. After {cmd:net install}, fetch it into the
 current folder with {cmd:net get xlpolish} (using the same {cmd:from()} as for the
 install) and run {cmd:do xlpolish_test.do}; it ends with "ALL TESTS PASSED" and
 writes a demo workbook with every feature on to {cmd:xlpolish_test_output}.
+
+
+{title:Author}
+
+{pstd}
+Fahad Mirza{break}
+GitHub: {browse "https://github.com/fahad-mirza":github.com/fahad-mirza}
+
+{pstd}
+Questions, bug reports and suggestions are welcome at
+{browse "https://github.com/fahad-mirza/xlpolish/issues":github.com/fahad-mirza/xlpolish/issues}.
+When reporting a problem, please include the {cmd:xlpolish} command you ran and,
+if possible, the workbook before it was polished.
+
+
+{title:Also see}
+
+{psee}
+Help: {helpb putexcel}, {helpb export excel}, {helpb import excel}
+{p_end}
+

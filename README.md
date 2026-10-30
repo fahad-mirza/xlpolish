@@ -3,8 +3,44 @@
 Finishing touches for Excel files written by Stata's `putexcel` or `export excel`.
 
 `xlpolish` adds what those commands cannot set, so a workbook produced by a
-do-file can be handed over ready to use. It runs on Stata's built-in Java and needs
-no Excel, Python or PowerShell. Requires **Stata 16 or newer**.
+do-file can be handed over ready to use: freeze panes, filters, auto-fit columns,
+conditional formatting, dropdown lists, notes, grouping, protected templates,
+hidden sheets and print setup, all from one command in your do-file.
+
+## See it in action
+
+<!-- Walkthrough video: edit this file on github.com and drag xlpolish_walkthrough.mp4
+     onto this line. GitHub uploads it and replaces this comment with a playable video. -->
+
+## What you need
+
+**Stata 16 or newer. Nothing else.**
+
+`xlpolish` is written in Java and runs on the Java that comes with Stata. Since
+Stata 16, Stata installs its own Java runtime alongside the program, so there is
+nothing extra to download or configure. In particular, you do **not** need:
+
+- **Microsoft Excel.** `xlpolish` edits the .xlsx file directly, so it works the
+  same in Stata for Windows, macOS and Linux, including on servers and remote
+  machines without Office.
+- **Python, R, or any of their packages.** No `python:` blocks, no `rcall`, and no
+  separate installation to keep in sync with Stata.
+- **PowerShell, VBA macros or Office automation.** Nothing is scripted through
+  Windows or Excel, so it also runs on locked-down work computers where those are
+  restricted.
+- **Extra Java libraries.** It uses only the standard Java library; the whole
+  engine is one small file (`xlpolish.jar`, about 65 KB) installed with the
+  command.
+- **Administrator rights.** `net install` puts the files in your personal ado
+  folder.
+- **An internet connection to run it.** Only installing and updating go online.
+
+The workbooks it writes are standard .xlsx files that open in Excel and
+LibreOffice like any other.
+
+## Options at a glance
+
+All options can be combined in one call. See `help xlpolish` for details.
 
 | Area | Options |
 |---|---|
@@ -19,6 +55,8 @@ no Excel, Python or PowerShell. Requires **Stata 16 or newer**.
 | Printing | `landscape` / `portrait`, `fitwidth`, `printtitles()` |
 
 ## Install
+
+Run this once in Stata:
 
 ```stata
 net install xlpolish, from("https://raw.githubusercontent.com/fahad-mirza/xlpolish/main/") replace
@@ -111,3 +149,11 @@ then run `xlpolish_test.do` in Stata and open the demo workbook in Excel.
 When publishing a new version, update the version line at the top of
 `xlpolish.ado` and `xlpolish.sthlp`, the `Distribution-Date` in `xlpolish.pkg`,
 and `CHANGELOG.md`.
+
+## Author
+
+Fahad Mirza ([github.com/fahad-mirza](https://github.com/fahad-mirza)). Questions,
+bug reports and suggestions are welcome as
+[issues](https://github.com/fahad-mirza/xlpolish/issues); please include the
+`xlpolish` command you ran and, if possible, the workbook before it was polished.
+
