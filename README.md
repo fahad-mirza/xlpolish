@@ -45,14 +45,14 @@ All options can be combined in one call. See `help xlpolish` for details.
 | Area | Options |
 |---|---|
 | Which sheet | `sheet()`, `allsheets` (default: first worksheet) |
-| View | `freeze()`, `hidegrid` / `showgrid`, `zoom()`, `tabcolor()` |
-| Data | `autofilter`, `filterrange()`, `removefilter`, `autofit`, `autofitmax()`, `colwidth()` |
-| Conditional formatting | `colorscale()`, `databar()`, `highlight()` |
-| Data entry | `dropdown()`, `unlock()` |
+| View | `freeze()`, `hidegrid` / `showgrid`, `zoom()`, `tabcolor()`, `hiderows()` / `hidecols()`, `showrows()` / `showcols()` |
+| Data | `autofilter`, `filterrange()`, `removefilter`, `nofilterarrow()`, `autofit`, `autofitmax()`, `colwidth()` |
+| Conditional formatting | `colorscale()`, `databar()`, `highlight()`, `iconset()`, `top()` / `bottom()`, `average()` |
+| Data entry | `dropdown()`, `validate()`, `prompt()`, `unlock()` |
 | Notes | `comment()`, `commentauthor()`, `removecomments` |
 | Grouping | `grouprows()`, `groupcols()`, `collapse`, `ungroup`, `summaryabove` / `summaryleft` |
 | Protection and visibility | `protect`, `password()`, `unprotect`, `hidesheet` / `showsheet` |
-| Printing | `landscape` / `portrait`, `fitwidth`, `printtitles()` |
+| Printing | `landscape` / `portrait`, `fitwidth`, `printtitles()`, `header()` / `footer()` |
 
 ## Install
 
@@ -103,10 +103,14 @@ It should end with `ALL TESTS PASSED` and leave two workbooks in
   rep78 of 1-2 pink, with empty rep78 cells left white; a Yes/No dropdown in
   column M; red note triangles on the price and mpg headers; a `-` button that
   folds rows 54-75; in print preview, landscape, one page wide, header row on every
-  page. On **Template** (orange tab): typing into column A is refused, while
-  B2:C6 can be edited and B2:B6 offer Yes / No / Unsure; Review > Unprotect Sheet
+  page, and a footer with the file name, page numbers and date. On **Template** (orange tab): typing into column A is refused, while
+  B2:D6 can be edited; selecting B2 shows "Choose Yes, No or Unsure" and B2:B6 offer
+  those choices; typing 150 into D2 is refused with "Enter a number from 0 to 100."; Review > Unprotect Sheet
   asks for the password `demo`. The **Lists** sheet is hidden (right-click a tab >
-  Unhide shows it).
+  Unhide shows it). On **Scores** (teal tab): two column groups, Ind 1.1-1.3 and
+  Ind 2.1-2.3, fold separately with their own -/+ buttons; the slim column E
+  between them keeps them apart and has no filter arrow, while every other header
+  has one.
 - **xlpolish_test.xlsx** is left as the tests finish with it; some settings were
   removed again on purpose.
 

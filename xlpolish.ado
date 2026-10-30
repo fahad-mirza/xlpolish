@@ -1,4 +1,4 @@
-*! xlpolish 1.2.0  30oct2026
+*! xlpolish 1.3.1  30oct2026
 *! Finishing touches for Excel files written by putexcel / export excel:
 *! freeze panes, filters, column widths, conditional formatting, dropdowns,
 *! notes, grouping, protection, hidden sheets, print setup and sheet appearance.
@@ -18,6 +18,10 @@ program define xlpolish, rclass
         comment(string asis) commentauthor(string) removecomments           ///
         grouprows(string) groupcols(string) collapse ungroup                ///
         summaryabove summarybelow summaryleft summaryright                  ///
+        nofilterarrow(string) validate(string asis) prompt(string asis)     ///
+        iconset(string asis) top(string asis) bottom(string asis)           ///
+        average(string asis) header(string asis) footer(string asis)        ///
+        hiderows(string) hidecols(string) showrows(string) showcols(string) ///
         protect password(string) unprotect unlock(string)                   ///
         hidesheet showsheet                                                 ///
         ]
@@ -73,6 +77,10 @@ program define xlpolish, rclass
     }
     if "`summaryleft'" != "" & "`summaryright'" != "" {
         display as error "options summaryleft and summaryright may not be combined"
+        exit 198
+    }
+    if `"`nofilterarrow'"' != "" & "`removefilter'" != "" {
+        display as error "option nofilterarrow() may not be combined with removefilter"
         exit 198
     }
     if `"`commentauthor'"' == "" local commentauthor `"`c(username)'"'
@@ -138,6 +146,19 @@ program define xlpolish, rclass
     if "`unprotect'"     != "" file write `fh' "unprotect"   _tab "1" _n
     if "`hidesheet'"     != "" file write `fh' "hidesheet"   _tab "1" _n
     if "`showsheet'"     != "" file write `fh' "showsheet"   _tab "1" _n
+    if `"`nofilterarrow'"' != "" file write `fh' "nofilterarrow" _tab `"`nofilterarrow'"' _n
+    if `"`validate'"'    != "" file write `fh' "validate"    _tab `"`validate'"' _n
+    if `"`prompt'"'      != "" file write `fh' "prompt"      _tab `"`prompt'"' _n
+    if `"`iconset'"'     != "" file write `fh' "iconset"     _tab `"`iconset'"' _n
+    if `"`top'"'         != "" file write `fh' "top"         _tab `"`top'"' _n
+    if `"`bottom'"'      != "" file write `fh' "bottom"      _tab `"`bottom'"' _n
+    if `"`average'"'     != "" file write `fh' "average"     _tab `"`average'"' _n
+    if `"`header'"'      != "" file write `fh' "header"      _tab `"`header'"' _n
+    if `"`footer'"'      != "" file write `fh' "footer"      _tab `"`footer'"' _n
+    if `"`hiderows'"'    != "" file write `fh' "hiderows"    _tab `"`hiderows'"' _n
+    if `"`hidecols'"'    != "" file write `fh' "hidecols"    _tab `"`hidecols'"' _n
+    if `"`showrows'"'    != "" file write `fh' "showrows"    _tab `"`showrows'"' _n
+    if `"`showcols'"'    != "" file write `fh' "showcols"    _tab `"`showcols'"' _n
     file close `fh'
 
     capture noisily javacall xlpolish.XLPolish run, jars(xlpolish.jar) args(`"`spec'"')

@@ -204,4 +204,138 @@ f = gfile("s4.xlsx"); polish(f, grouprows="5:8", collapse="1", summaryrows="abov
 doc = lo.open_doc(f); sh = doc.Sheets.getByIndex(0); rows = sh.getRows()
 check("LibreOffice: grouped rows 5-8 hidden, row 4 visible", (not rows.getByIndex(5).IsVisible) and rows.getByIndex(3).IsVisible and rows.getByIndex(8).IsVisible)
 doc.close(True); lo.stop()
+
+# ================================================================ 1.3.0: filter arrows, validation, prompts, icons, ranks, header/footer, hide
+def tbl(name):
+    wb = openpyxl.Workbook(); ws = wb.active; ws.title = "T"
+    ws.append(["Economy", "Score", "Rank", "Year", "", "Note"])
+    for i in range(1, 21): ws.append([f"Economy {i}", 40 + i * 2.5, i, 2020 + i % 5, None, "ok" if i % 3 else None])
+    wb.save(name); return os.path.abspath(name)
+def sheet_xml(f): return part(f, "xl/worksheets/sheet1.xml")
+
+# --- nofilterarrow
+f = tbl("fa.xlsx"); rc, out = polish(f, autofilter="on", autofit="1", nofilterarrow="E")
+ws = openpyxl.load_workbook(f).active; fcs = ws.auto_filter.filterColumn
+check("nofilterarrow: column E arrow hidden, filter still A1:F21", rc == 0 and ws.auto_filter.ref == "A1:F21"
+      and len(fcs) == 1 and fcs[0].colId == 4 and fcs[0].hiddenButton, (out, ws.auto_filter.ref, [(c.colId, c.hiddenButton) for c in fcs]))
+check("nofilterarrow: schema order", order_ok(f) == [], order_ok(f))
+rc, out = polish(f, nofilterarrow="F")
+fcs = openpyxl.load_workbook(f).active.auto_filter.filterColumn
+check("nofilterarrow on an existing filter adds F, keeps E, in column order", rc == 0 and [c.colId for c in fcs] == [4, 5], [c.colId for c in fcs])
+rc, out = polish(tbl("fa2.xlsx"), nofilterarrow="E"); check("nofilterarrow without a filter refused", rc == 198 and "needs a filter" in out, out)
+rc, out = polish(tbl("fa3.xlsx"), filterrange="A1:C21", nofilterarrow="E"); check("nofilterarrow outside the filter range refused", rc == 198 and "outside" in out, out)
+rc, out = polish(tbl("fa4.xlsx"), removefilter="1", autofilter="off", nofilterarrow="E") if False else polish(tbl("fa4.xlsx"), autofilter="off", nofilterarrow="E")
+check("nofilterarrow with removefilter refused", rc == 198, out)
+
+# --- validate
+f = tbl("va.xlsx")
+rc, out = polish(f, validate='B2:B21 decimal between 0 100; C2:C21 whole >= 1; D2:D21 date between 2020-01-01 2026-12-31; F2:F21 length <= 50 "Keep notes short"')
+dv = {str(d.sqref): d for d in openpyxl.load_workbook(f).active.data_validations.dataValidation}
+check("validate: four rules written", rc == 0 and len(dv) == 4, (out, list(dv)))
+b = dv["B2:B21"]; c = dv["C2:C21"]; dd = dv["D2:D21"]; ff = dv["F2:F21"]
+check("validate: decimal between 0 and 100, plain default message", b.type == "decimal" and b.operator in (None, "between")
+      and b.formula1 == "0" and b.formula2 == "100" and b.error == "Enter a number from 0 to 100.", (b.type, b.operator, b.formula1, b.formula2, b.error))
+check("validate: whole >= 1", c.type == "whole" and c.operator == "greaterThanOrEqual" and c.formula1 == "1")
+check("validate: dates converted to Excel day numbers (2020-01-01 = 43831)", dd.type == "date" and dd.formula1 == "43831" and dd.formula2 == "46387", (dd.formula1, dd.formula2))
+check("validate: text length with custom message", ff.type == "textLength" and ff.operator == "lessThanOrEqual" and ff.error == "Keep notes short")
+for bad, why in [("B2:B9 decimal between 9 1", "bounds reversed"), ("B2:B9 number > 1", "unknown type"), ("B2:B9 date > 31/12/2026", "bad date"),
+                 ("B2:B9 whole > 1.5", "fraction for whole"), ("B2:B9 decimal between 1", "missing bound"), ("B3:B4 decimal > 0", "overlaps existing rule")]:
+    rc, out = polish(f, validate=bad); check(f"validate refused: {why}", rc == 198, out)
+doc = lo.open_doc(f); sh = doc.Sheets.getByIndex(0); v = sh.getCellRangeByName("B5").Validation
+from com.sun.star.sheet.ValidationType import DECIMAL
+check("LibreOffice: B5 has the decimal validation with the right bounds", v.Type == DECIMAL and v.getFormula1() == "0" and v.getFormula2() == "100", (v.Type, v.getFormula1(), v.getFormula2()))
+doc.close(True); lo.stop()
+
+# --- prompt
+f = tbl("pr.xlsx")
+rc, out = polish(f, dropdown="E2:E21 Yes,No", prompt='E2:E21 "Was this economy reviewed?"; A2:A21 "Economy names are fixed"')
+dvs = {str(d.sqref): d for d in openpyxl.load_workbook(f).active.data_validations.dataValidation}
+check("prompt joins the dropdown on the same cells (one rule, list + prompt)", rc == 0 and len(dvs) == 2
+      and dvs["E2:E21"].type == "list" and dvs["E2:E21"].prompt == "Was this economy reviewed?" and dvs["E2:E21"].showInputMessage, (out, list(dvs)))
+check("prompt on its own cells: a rule that accepts anything", dvs["A2:A21"].type in (None, "none") and dvs["A2:A21"].prompt.startswith("Economy"))
+rc, out = polish(f, dropdown="E2:E21 Yes,No,Unsure")
+e = [d for d in openpyxl.load_workbook(f).active.data_validations.dataValidation if str(d.sqref) == "E2:E21"]
+check("re-running a dropdown replaces it and keeps its prompt", rc == 0 and len(e) == 1 and e[0].formula1 == '"Yes,No,Unsure"' and e[0].prompt.startswith("Was"), [(d.formula1, d.prompt) for d in e])
+rc, out = polish(f, prompt='E5:E30 "partial"'); check("prompt partly overlapping another rule refused", rc == 198 and "overlaps" in out, out)
+check("validation schema order", order_ok(f) == [], order_ok(f))
+
+# --- icon sets, top/bottom, average
+f = tbl("ic.xlsx")
+rc, out = polish(f, iconset="B2:B21 traffic; C2:C21 arrows5 percentile reverse iconsonly", top="B2:B21 3 lightgreen", bottom="B2:B21 10% pink darkred",
+                 average="C2:C21 below FFC7CE")
+ws = openpyxl.load_workbook(f).active
+rules = [(str(r.sqref), x) for r in ws.conditional_formatting for x in r.rules]
+kinds = sorted(x.type for _, x in rules)
+check("icon sets, top, bottom and average rules written", rc == 0 and kinds == ["aboveAverage", "iconSet", "iconSet", "top10", "top10"], (out, kinds))
+icons = {sq: x.iconSet for sq, x in rules if x.type == "iconSet"}
+t = icons["B2:B21"]; a5 = icons["C2:C21"]
+check("traffic lights: 3 thresholds at 0/33/67 percent", t.iconSet == "3TrafficLights1" and [c.val for c in t.cfvo] == [0, 33, 67] and t.cfvo[0].type == "percent",
+      (t.iconSet, [(c.type, c.val) for c in t.cfvo]))
+check("arrows5 percentile reverse iconsonly", a5.iconSet == "5Arrows" and a5.reverse and a5.showValue is False and [c.val for c in a5.cfvo] == [0, 20, 40, 60, 80]
+      and a5.cfvo[1].type == "percentile")
+tops = [x for _, x in rules if x.type == "top10"]
+check("top 3 and bottom 10%", sorted((x.rank, bool(x.percent), bool(x.bottom)) for x in tops) == [(3, False, False), (10, True, True)])
+avg = [x for _, x in rules if x.type == "aboveAverage"][0]
+check("below average", avg.aboveAverage is False and avg.dxfId is not None)
+pr = [x.priority for _, x in rules]; check("all priorities unique", len(set(pr)) == len(pr), pr)
+for bad, why in [("B2:B9 lights", "unknown icon style"), ("B2:B9 traffic upside", "unknown extra word")]:
+    rc, out = polish(f, iconset=bad); check(f"iconset refused: {why}", rc == 198, out)
+rc, out = polish(f, top="B2:B9 0 red"); check("top() N of 0 refused", rc == 198, out)
+rc, out = polish(f, average="B2:B9 middle red"); check("average() needs above/below", rc == 198, out)
+
+# --- header / footer
+f = tbl("hf.xlsx")
+rc, out = polish(f, header='"Draft & confidential"', footer='"[file] | Page [page] of [pages] | [date]"')
+x = sheet_xml(f)
+check("header centred with & escaped; footer in three sections with codes", rc == 0
+      and "<oddHeader>&amp;CDraft &amp;&amp; confidential</oddHeader>" in x
+      and "<oddFooter>&amp;L&amp;F&amp;CPage &amp;P of &amp;N&amp;R&amp;D</oddFooter>" in x, re.findall(r"<headerFooter>.*?</headerFooter>", x))
+check("header/footer schema order", order_ok(f) == [], order_ok(f))
+wsx = openpyxl.load_workbook(f).active
+check("openpyxl reads footer sections", wsx.oddFooter.center.text == "Page &P of &N" and wsx.oddFooter.left.text == "&F", (wsx.oddFooter.left.text, wsx.oddFooter.center.text))
+rc, out = polish(f, footer='""'); x = sheet_xml(f)
+check("footer(\"\") removes the footer, keeps the header", rc == 0 and "oddFooter" not in x and "oddHeader" in x)
+rc, out = polish(f, header='""'); check("removing both drops the element", rc == 0 and "headerFooter" not in sheet_xml(f))
+rc, out = polish(f, footer='"Page [pg]"'); check("unknown placeholder refused", rc == 198 and "[page]" in out, out)
+rc, out = polish(f, footer='"a | b"'); check("two sections refused", rc == 198, out)
+
+# --- hide / show
+f = tbl("hd.xlsx")
+rc, out = polish(f, hiderows="5:7", hidecols="E F")
+rd = openpyxl.load_workbook(f).active
+check("rows 5-7 and columns E, F hidden", rc == 0 and all(rd.row_dimensions[r].hidden for r in (5,6,7)) and not rd.row_dimensions[8].hidden
+      and rd.column_dimensions["E"].hidden and rd.column_dimensions["F"].hidden)
+doc = lo.open_doc(f); sh = doc.Sheets.getByIndex(0)
+check("LibreOffice: row 6 and column E hidden, row 8 and column D visible", (not sh.getRows().getByIndex(5).IsVisible) and sh.getRows().getByIndex(7).IsVisible
+      and (not sh.getColumns().getByIndex(4).IsVisible) and sh.getColumns().getByIndex(3).IsVisible)
+doc.close(True); lo.stop()
+rc, out = polish(f, showrows="5:7", showcols="E:F")
+rd = openpyxl.load_workbook(f).active
+check("showrows/showcols bring them back", rc == 0 and not any(rd.row_dimensions[r].hidden for r in (5,6,7)) and not rd.column_dimensions["E"].hidden)
+check("hide/show schema order", order_ok(f) == [], order_ok(f))
+
+# --- all of it in one call, then LibreOffice round trip
+f = tbl("all13.xlsx")
+rc, out = polish(f, autofilter="on", nofilterarrow="E", validate="B2:B21 decimal between 0 100", prompt='B2:B21 "Score from 0 to 100"',
+                 iconset="C2:C21 flags", top="B2:B21 5 lightgreen", average="B2:B21 below pink", header='"xlpolish test"',
+                 footer='"Page [page] of [pages]"', hidecols="F", freeze="B2", autofit="1")
+check("all 1.3.0 options together", rc == 0 and order_ok(f) == [], (out, order_ok(f)))
+os.makedirs("lo13", exist_ok=True)
+subprocess.run(["soffice","--headless","--convert-to","xlsx","--outdir","lo13",f],capture_output=True,timeout=180)
+b = openpyxl.load_workbook("lo13/all13.xlsx").active
+check("LibreOffice round trip keeps validation, prompt, icon set and footer",
+      any(d.type == "decimal" and d.prompt for d in b.data_validations.dataValidation)
+      and any(x.type == "iconSet" for r in b.conditional_formatting for x in r.rules) and "Page" in (b.oddFooter.center.text or ""),
+      ([(d.type, d.prompt) for d in b.data_validations.dataValidation], b.oddFooter.center.text))
+
+# ================================================================ rule priority: newer rules on top, like Excel
+f = tbl("pri.xlsx")
+rc, out = polish(f, colorscale="B2:B21", databar="C2:C21", highlight="B2:B21 >= 80 lightgreen")
+pri = {x.type: x.priority for r in openpyxl.load_workbook(f).active.conditional_formatting for x in r.rules}
+check("within one call: highlight above colour scale and data bar", rc == 0 and pri["expression"] == 1 and sorted(pri.values()) == [1, 2, 3], pri)
+rc, out = polish(f, top="C2:C21 3 lightgreen", average="B2:B21 below pink")
+rl = [(x.type, x.priority) for r in openpyxl.load_workbook(f).active.conditional_formatting for x in r.rules]
+p = dict(rl)
+check("second call's rules go to the top, earlier rules move down", rc == 0 and p["top10"] == 1 and p["aboveAverage"] == 2
+      and p["expression"] == 3 and sorted(v for _, v in rl) == [1, 2, 3, 4, 5], rl)
 print("FAILURES:", fails)

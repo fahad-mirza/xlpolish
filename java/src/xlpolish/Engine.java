@@ -45,6 +45,14 @@ final class Engine {
     private final List<int[]> groupRows = new ArrayList<>();
     private final List<int[]> groupCols = new ArrayList<>();
     private final List<int[]> unlockRects = new ArrayList<>();
+    private final List<Extras.Rule> rules = new ArrayList<>();
+    private final List<Extras.Prompt> prompts = new ArrayList<>();
+    private final List<Extras.IconSet> iconsets = new ArrayList<>();
+    private final List<Extras.Rank> ranks = new ArrayList<>();
+    private final List<Extras.Avg> avgs = new ArrayList<>();
+    private String headerCode, footerCode;
+    private List<int[]> hideRowList, hideColList, showRowList, showColList, noArrowCols;
+    private final java.util.Set<Integer> noArrow = new java.util.HashSet<>();
     /** Warnings to show under a sheet's summary line (the call still succeeds). */
     private final List<String> notesOut = new ArrayList<>();
 
@@ -92,6 +100,23 @@ final class Engine {
         }
         for (String r : spec.unlock) {
             for (String piece : r.trim().split("[\\s,]+")) if (!piece.isEmpty()) unlockRects.add(Cells.parseRect(piece));
+        }
+        for (String r : spec.validate) rules.add(Extras.parseRule(r));
+        for (String r : spec.prompt) prompts.add(Extras.parsePrompt(r));
+        for (String r : spec.iconset) iconsets.add(Extras.parseIconSet(r));
+        for (String r : spec.top) ranks.add(Extras.parseRank(r, false));
+        for (String r : spec.bottom) ranks.add(Extras.parseRank(r, true));
+        for (String r : spec.average) avgs.add(Extras.parseAverage(r));
+        if (spec.header != null) headerCode = Extras.headerCode(spec.header, "header");
+        if (spec.footer != null) footerCode = Extras.headerCode(spec.footer, "footer");
+        if (spec.hideRows != null) hideRowList = Extras.parseRowList(spec.hideRows, "hiderows");
+        if (spec.hideCols != null) hideColList = Extras.parseColList(spec.hideCols, "hidecols");
+        if (spec.showRows != null) showRowList = Extras.parseRowList(spec.showRows, "showrows");
+        if (spec.showCols != null) showColList = Extras.parseColList(spec.showCols, "showcols");
+        if (spec.noFilterArrow != null) {
+            if (Boolean.FALSE.equals(spec.autofilter)) throw XLPolishException.syntax("nofilterarrow() may not be combined with removefilter");
+            noArrowCols = Extras.parseColList(spec.noFilterArrow, "nofilterarrow");
+            for (int[] rg : noArrowCols) for (int c = rg[0]; c <= rg[1]; c++) noArrow.add(c);
         }
         if (Boolean.TRUE.equals(spec.hideSheet) && spec.mode == Spec.Mode.ALL) {
             throw XLPolishException.syntax("hidesheet cannot be combined with allsheets (a workbook needs at least one visible sheet)");
@@ -320,11 +345,22 @@ final class Engine {
             changed = true;
             done.add(msg);
         }
+        if (noArrowCols != null) {
+            Extras.hideFilterArrows(ws, noArrowCols, sh.name);
+            changed = true;
+            done.add("filter arrows hidden on " + spec.noFilterArrow.trim().toUpperCase(Locale.ROOT));
+        }
         if (spec.orientation != null || spec.fitwidth) {
             pageSetup(ws);
             changed = true;
             if (spec.orientation != null) done.add(spec.orientation);
             if (spec.fitwidth) done.add("fit to 1 page wide");
+        }
+        if (headerCode != null || footerCode != null) {
+            Extras.setHeaderFooter(ws, headerCode, footerCode);
+            changed = true;
+            if (headerCode != null) done.add(headerCode.isEmpty() ? "header removed" : "header set");
+            if (footerCode != null) done.add(footerCode.isEmpty() ? "footer removed" : "footer set");
         }
         if (titleRows != null || titleCols != null) {
             String ref = "";
@@ -336,19 +372,47 @@ final class Engine {
                     + (titleRows != null && titleCols != null ? ", " : "")
                     + (titleCols != null ? "columns " + titleCols.replace("$", "") : ""));
         }
-        if (!scales.isEmpty() || !bars.isEmpty() || !highlights.isEmpty()) {
-            int pr = maxPriority(ws);
+        if (!scales.isEmpty() || !bars.isEmpty() || !highlights.isEmpty() || !iconsets.isEmpty() || !ranks.isEmpty() || !avgs.isEmpty()) {
+            // Like Excel, rules added later go above earlier ones (priority 1 = applied first and
+            // wins when two rules set the cell's look). Within this call, highlight-type rules come
+            // before colour scales, data bars and icon sets so their fills stay visible.
+            int nNew = scales.size() + bars.size() + highlights.size() + iconsets.size() + ranks.size() + avgs.size();
+            shiftPriorities(ws, nNew);
+            int pr = 0;
+            for (Highlight h : highlights) addHighlight(book, ws, h, ++pr);
+            for (Extras.Rank k : ranks) {
+                Element rule = Extras.cfRule(ws, k.sqref, "top10", ++pr);
+                rule.setAttribute("dxfId", Integer.toString(addDxf(book, k.fill, k.font)));
+                rule.setAttribute("rank", Integer.toString(k.n));
+                if (k.percent) rule.setAttribute("percent", "1");
+                if (k.bottom) rule.setAttribute("bottom", "1");
+            }
+            for (Extras.Avg a : avgs) {
+                Element rule = Extras.cfRule(ws, a.sqref, "aboveAverage", ++pr);
+                rule.setAttribute("dxfId", Integer.toString(addDxf(book, a.fill, a.font)));
+                if (a.below) rule.setAttribute("aboveAverage", "0");
+            }
+            for (Extras.IconSet ic : iconsets) Extras.addIconSet(ws, ic, ++pr);
             for (ColorScale cs : scales) addColorScale(ws, cs, ++pr);
             for (DataBar d : bars) addDataBar(ws, d, ++pr);
-            for (Highlight h : highlights) addHighlight(book, ws, h, ++pr);
             changed = true;
-            int n = scales.size() + bars.size() + highlights.size();
+            int n = scales.size() + bars.size() + highlights.size() + iconsets.size() + ranks.size() + avgs.size();
             done.add(n + " conditional format" + (n == 1 ? "" : "s") + " added");
         }
         if (!dropdowns.isEmpty()) {
-            for (Dropdown d : dropdowns) addDropdown(ws, d);
+            for (Dropdown d : dropdowns) Extras.addList(ws, d.sqref, d.formula);
             changed = true;
             done.add(dropdowns.size() + " dropdown list" + (dropdowns.size() == 1 ? "" : "s") + " added");
+        }
+        if (!rules.isEmpty()) {
+            for (Extras.Rule v : rules) Extras.addRule(ws, v);
+            changed = true;
+            done.add(rules.size() + " validation rule" + (rules.size() == 1 ? "" : "s") + " added");
+        }
+        if (!prompts.isEmpty()) {
+            for (Extras.Prompt p : prompts) Extras.addPrompt(ws, p);
+            changed = true;
+            done.add(prompts.size() + " input prompt" + (prompts.size() == 1 ? "" : "s") + " added");
         }
         if (!notes.isEmpty() || spec.removeComments) {
             int[] n = Notes.apply(book, sh, ws, notes, spec.commentAuthor, spec.removeComments);
@@ -377,6 +441,10 @@ final class Engine {
             changed = true;
             done.add(groupCols.size() + " column group" + (groupCols.size() == 1 ? "" : "s") + (spec.collapse ? " (collapsed)" : ""));
         }
+        if (hideRowList != null) { Extras.rowsHidden(ws, hideRowList, true); changed = true; done.add("rows hidden"); }
+        if (showRowList != null) { Extras.rowsHidden(ws, showRowList, false); changed = true; done.add("rows shown"); }
+        if (hideColList != null) { Extras.colsHidden(ws, hideColList, true); changed = true; done.add("columns hidden"); }
+        if (showColList != null) { Extras.colsHidden(ws, showColList, false); changed = true; done.add("columns shown"); }
         if (!unlockRects.isEmpty()) {
             Protect.unlock(book, ws, unlockRects);
             changed = true;
@@ -498,7 +566,8 @@ final class Engine {
             if (text == null) continue;
             int w = Cells.displayWidth(text);
             // leave room for the filter dropdown arrow Excel draws in header cells
-            if (filter != null && cr.row == filter[0] && cr.col >= filter[1] && cr.col <= filter[3]) w += FILTER_ARROW;
+            if (filter != null && cr.row == filter[0] && cr.col >= filter[1] && cr.col <= filter[3]
+                    && !noArrow.contains(cr.col) && !arrowHidden(ws, filter, cr.col)) w += FILTER_ARROW;
             Integer cur = longest.get(cr.col);
             if (cur == null || w > cur) longest.put(cr.col, w);
         }
@@ -509,6 +578,17 @@ final class Engine {
             setWidth(cols, e.getKey(), w);
         }
         return longest.size();
+    }
+
+    /** True if the sheet's existing filter already hides the arrow on column c. */
+    private static boolean arrowHidden(Element ws, int[] filter, int c) {
+        Element af = Pkg.first(ws, "autoFilter");
+        if (af == null) return false;
+        for (Element fc : Pkg.children(af, "filterColumn")) {
+            if (fc.hasAttribute("colId") && Grid.toInt(fc.getAttribute("colId")) == c - filter[1]
+                    && ("1".equals(fc.getAttribute("hiddenButton")) || "true".equals(fc.getAttribute("hiddenButton")))) return true;
+        }
+        return false;
     }
 
     /** Extra characters for the filter dropdown arrow in a header cell. */
@@ -681,12 +761,14 @@ final class Engine {
 
     // -------------------------------------------------- conditional formats
 
-    private static int maxPriority(Element ws) {
-        int max = 0;
+    /** Moves every existing rule down by n places, making room for n new rules at the top. */
+    private static void shiftPriorities(Element ws, int n) {
         for (Element cf : Pkg.children(ws, "conditionalFormatting")) {
-            for (Element r : Pkg.children(cf, "cfRule")) max = Math.max(max, parseInt(r.getAttribute("priority")));
+            for (Element r : Pkg.children(cf, "cfRule")) {
+                int p = parseInt(r.getAttribute("priority"));
+                if (p > 0) r.setAttribute("priority", Integer.toString(p + n));
+            }
         }
-        return max;
     }
 
     private static Element newRule(Element ws, String sqref, String type, int priority) {
@@ -773,21 +855,6 @@ final class Engine {
     }
 
     // ------------------------------------------------------------- dropdowns
-
-    private static void addDropdown(Element ws, Dropdown d) {
-        Element dvs = Pkg.ensure(ws, "dataValidations", Pkg.WORKSHEET_ORDER);
-        Element dv = Pkg.create(dvs, "dataValidation");
-        dv.setAttribute("type", "list");
-        dv.setAttribute("allowBlank", "1");
-        dv.setAttribute("showInputMessage", "1");
-        dv.setAttribute("showErrorMessage", "1");
-        dv.setAttribute("sqref", d.sqref);
-        Element f = Pkg.create(dv, "formula1");
-        f.setTextContent(d.formula);
-        dv.appendChild(f);
-        dvs.appendChild(dv);
-        dvs.setAttribute("count", Integer.toString(Pkg.children(dvs, "dataValidation").size()));
-    }
 
     // ------------------------------------------------------- sheet visibility
 

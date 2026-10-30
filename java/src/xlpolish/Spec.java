@@ -47,6 +47,14 @@ final class Spec {
     Boolean hideSheet;             // null leave, TRUE hide, FALSE show
     Boolean summaryAbove;          // null leave, TRUE above detail, FALSE below (Excel default)
     Boolean summaryLeft;           // null leave, TRUE left of detail, FALSE right (Excel default)
+    final List<String> validate = new ArrayList<>();
+    final List<String> prompt = new ArrayList<>();
+    final List<String> iconset = new ArrayList<>();
+    final List<String> top = new ArrayList<>();
+    final List<String> bottom = new ArrayList<>();
+    final List<String> average = new ArrayList<>();
+    String header, footer;         // null leave; "" (or "\"\"") removes
+    String hideRows, hideCols, showRows, showCols, noFilterArrow;
 
     static Spec read(Path p) throws XLPolishException {
         List<String> lines;
@@ -110,6 +118,19 @@ final class Spec {
             case "showsheet": hideSheet = Boolean.FALSE; break;
             case "summaryrows": summaryAbove = "above".equals(v); break;
             case "summarycols": summaryLeft = "left".equals(v); break;
+            case "validate": addRules(validate, v); break;
+            case "prompt": addRules(prompt, v); break;
+            case "iconset": addRules(iconset, v); break;
+            case "top": addRules(top, v); break;
+            case "bottom": addRules(bottom, v); break;
+            case "average": addRules(average, v); break;
+            case "header": header = v; break;
+            case "footer": footer = v; break;
+            case "hiderows": hideRows = v; break;
+            case "hidecols": hideCols = v; break;
+            case "showrows": showRows = v; break;
+            case "showcols": showCols = v; break;
+            case "nofilterarrow": noFilterArrow = v; break;
             default: throw XLPolishException.syntax("unknown option " + k);
         }
     }
@@ -145,7 +166,10 @@ final class Spec {
                 || !colorscale.isEmpty() || !databar.isEmpty() || !highlight.isEmpty() || !dropdown.isEmpty()
                 || !comment.isEmpty() || removeComments || groupRows != null || groupCols != null || ungroup
                 || protect != null || !unlock.isEmpty() || hideSheet != null
-                || summaryAbove != null || summaryLeft != null;
+                || summaryAbove != null || summaryLeft != null
+                || !validate.isEmpty() || !prompt.isEmpty() || !iconset.isEmpty() || !top.isEmpty()
+                || !bottom.isEmpty() || !average.isEmpty() || header != null || footer != null
+                || hideRows != null || hideCols != null || showRows != null || showCols != null || noFilterArrow != null;
     }
 
     /** Splits on whitespace, keeping "double quoted" pieces together (quotes removed). */

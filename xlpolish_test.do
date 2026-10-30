@@ -204,6 +204,31 @@ _has "summaryBelow" 0
 display as result "PASS 7: removal of notes, grouping, protection; hide and show; summary side"
 
 * ---------------------------------------------------------------------------
+* 7b. Filter arrows, validation and prompts, icons and rank rules,
+*     header/footer, hidden columns
+* ---------------------------------------------------------------------------
+xlpolish using `"`f'"', sheet("Data") autofilter nofilterarrow(L)               ///
+    validate(N2:N75 decimal between 0 100) prompt(N2:N75 "Score from 0 to 100") ///
+    iconset(B2:B75 traffic) top(C2:C75 5 lightgreen) average(B2:B75 below pink) ///
+    header("xlpolish test") footer("Page [page] of [pages]") hidecols(K)
+_xlp_xml `"`f'"' "xl/worksheets/sheet1.xml"
+_has `"hiddenButton="1""'
+_has `"type="decimal""'
+_has `"prompt="Score from 0 to 100""'
+_has `"iconSet="3TrafficLights1""'
+_has `"type="top10""'
+_has `"priority="1" rank="5" type="top10""'
+_has `"aboveAverage="0""'
+_has "Page &amp;P of &amp;N"
+_has `"hidden="1""'
+xlpolish using `"`f'"', sheet("Data") removefilter showcols(K) header("") footer("")
+_xlp_xml `"`f'"' "xl/worksheets/sheet1.xml"
+_has "hiddenButton" 0
+_has "headerFooter" 0
+_has `"hidden="1""' 0
+display as result "PASS 7b: filter arrows, validation, prompts, icons, rank rules, header/footer, hidden columns"
+
+* ---------------------------------------------------------------------------
 * 8. Data unchanged; other sheets still read
 * ---------------------------------------------------------------------------
 import excel using `"`f'"', sheet("Data") firstrow clear
@@ -243,6 +268,9 @@ rcof `"noisily xlpolish using "`f'", collapse zoom(90)"'                        
 rcof `"noisily xlpolish using "`f'", ungroup grouprows(2:3)"'                   == 198
 rcof `"noisily xlpolish using "`f'", summaryabove summarybelow"'                == 198
 rcof `"noisily xlpolish using "`f'", summaryleft summaryright"'                 == 198
+rcof `"noisily xlpolish using "`f'", autofilter removefilter nofilterarrow(E)"' == 198
+rcof `"noisily xlpolish using "`f'", validate(B2:B9 decimal between 9 1)"'      == 198
+rcof `"noisily xlpolish using "`f'", footer("Page [pg]")"'                      == 198
 rcof `"noisily xlpolish using "`f'", zoom(90) comment(B1:C2 "range not cell")"' == 198
 rcof `"noisily xlpolish using "`workdir'/no_such_file.xlsx", zoom(90)"'         == 601
 quietly copy `"`f'"' `"`workdir'/old_format.xls"', replace
@@ -255,27 +283,44 @@ display as result "PASS 9: errors, file untouched"
 * ---------------------------------------------------------------------------
 * 10. Demo workbook with every feature left on, for checking by eye in Excel
 *     Data     - view, filter, widths, formatting, dropdown, notes, grouping, print
-*     Template - protected form (password: demo); only B2:C6 editable,
-*                dropdowns take their choices from the hidden Lists sheet
+*     Template - protected form (password: demo); only B2:D6 editable,
+*                dropdowns take their choices from the hidden Lists sheet,
+*                scores in D2:D6 must be 0-100, prompts on B and D
 *     Lists    - hidden
+*     Scores   - two column groups side by side with a slim spacer column E,
+*                a filter on the whole table but no filter arrow on E
 * ---------------------------------------------------------------------------
 local demo `"`workdir'/xlpolish_demo.xlsx"'
 sysuse auto, clear
 export excel using `"`demo'"', firstrow(variables) sheet("Data") replace
 putexcel set `"`demo'"', sheet("Template") modify
-putexcel A1 = "Economy" B1 = "Reviewed?" C1 = "Reviewer comment", bold
+putexcel A1 = "Economy" B1 = "Reviewed?" C1 = "Reviewer comment" D1 = "Score (0-100)", bold
 putexcel A2 = "Albania" A3 = "Bangladesh" A4 = "Colombia" A5 = "Ghana" A6 = "Viet Nam"
 putexcel set `"`demo'"', sheet("Lists") modify
 putexcel A1 = "Yes" A2 = "No" A3 = "Unsure"
+* Scores: two blocks of (made-up) indicator columns with an empty spacer column E
+putexcel set `"`demo'"', sheet("Scores") modify
+putexcel A1 = "Economy" B1 = "Ind 1.1" C1 = "Ind 1.2" D1 = "Ind 1.3" ///
+         F1 = "Ind 2.1" G1 = "Ind 2.2" H1 = "Ind 2.3", bold
+putexcel A2 = "Economy A" A3 = "Economy B" A4 = "Economy C" ///
+         A5 = "Economy D" A6 = "Economy E" A7 = "Economy F"
+matrix P1 = (62, 71, 55 \ 80, 77, 69 \ 45, 52, 61 \ 73, 68, 79 \ 57, 49, 63 \ 88, 84, 76)
+matrix P2 = (48, 66, 59 \ 72, 81, 64 \ 58, 40, 47 \ 66, 70, 75 \ 61, 54, 68 \ 79, 83, 86)
+putexcel B2 = matrix(P1) F2 = matrix(P2)
 putexcel clear
 
 xlpolish using `"`demo'"', sheet("Data") freeze(B2) autofilter autofit hidegrid zoom(90) ///
     tabcolor(navy) colorscale(B2:B75) databar(G2:G75)                                 ///
     highlight(C2:C75 >= 30 lightgreen darkgreen; D2:D75 <= 2 FFC7CE 9C0006)            ///
     dropdown(M2:M75 Yes,No) landscape fitwidth printtitles(1)                         ///
-    comment(B1 "Price in 1978 US dollars"; C1 "Miles per gallon") grouprows(54:75)
+    comment(B1 "Price in 1978 US dollars"; C1 "Miles per gallon") grouprows(54:75) ///
+    footer("[file] | Page [page] of [pages] | [date]")
 xlpolish using `"`demo'"', sheet("Template") freeze(A2) autofit colwidth(C=40) tabcolor(orange) ///
-    dropdown(B2:B6 =Lists!A1:A3) unlock(B2:C6) protect password(demo)
+    dropdown(B2:B6 =Lists!A1:A3) validate(D2:D6 decimal between 0 100)                   ///
+    prompt(B2:B6 "Choose Yes, No or Unsure"; D2:D6 "Enter a score from 0 to 100")        ///
+    unlock(B2:D6) protect password(demo)
+xlpolish using `"`demo'"', sheet("Scores") freeze(B2) autofilter autofit nofilterarrow(E) ///
+    groupcols(B:D F:H) colwidth(E=2) tabcolor(teal)
 xlpolish using `"`demo'"', sheet("Lists") hidesheet
 _xlp_xml `"`demo'"' "xl/worksheets/sheet1.xml"
 _has `"state="frozen""'
@@ -285,6 +330,10 @@ _xlp_xml `"`demo'"' "xl/worksheets/sheet2.xml"
 * (char(36) is the dollar sign; typing it here would start a Stata global macro)
 assert strpos(__xlp_xml, "Lists!" + char(36) + "A" + char(36) + "1:" + char(36) + "A" + char(36) + "3") > 0
 _has "sheetProtection"
+_has "Enter a score from 0 to 100"
+_xlp_xml `"`demo'"' "xl/worksheets/sheet4.xml"
+_has `"hiddenButton="1""'
+_has `"outlineLevel="1""'
 _xlp_xml `"`demo'"' "xl/workbook.xml"
 _has `"state="hidden""'
 display as result "PASS 10: demo workbook written"

@@ -88,6 +88,21 @@ final class Cells {
         return String.join(" ", out);
     }
 
+    /** Rectangles of a normalised sqref ("A1:B5 D7"). */
+    static List<int[]> rects(String sqref) throws XLPolishException {
+        List<int[]> out = new ArrayList<>();
+        for (String piece : sqref.trim().split("\\s+")) if (!piece.isEmpty()) out.add(parseRect(piece));
+        return out;
+    }
+
+    /** True if any rectangle of a overlaps any rectangle of b. */
+    static boolean overlaps(List<int[]> a, List<int[]> b) {
+        for (int[] x : a) for (int[] y : b) {
+            if (x[0] <= y[2] && y[0] <= x[2] && x[1] <= y[3] && y[1] <= x[3]) return true;
+        }
+        return false;
+    }
+
     /** Display width of a string in "character" units; East Asian wide characters count as 2. */
     static int displayWidth(String s) {
         int w = 0, best = 0;

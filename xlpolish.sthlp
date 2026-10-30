@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.0  30oct2026}{...}
+{* *! version 1.3.1  30oct2026}{...}
 {title:Title}
 
 {phang}
@@ -23,11 +23,14 @@
 {synopt:{opt hidegrid} | {opt showgrid}}hide or show the cell gridlines{p_end}
 {synopt:{opt zoom(#)}}zoom level in percent, 10-400{p_end}
 {synopt:{opt tabcolor(color)}}colour of the sheet tab; {cmd:tabcolor(none)} removes{p_end}
+{synopt:{opt hiderows(rows)} | {opt showrows(rows)}}hide or show rows, e.g. {cmd:hiderows(5:7)}{p_end}
+{synopt:{opt hidecols(cols)} | {opt showcols(cols)}}hide or show columns, e.g. {cmd:hidecols(E H:J)}{p_end}
 
 {syntab:Data}
 {synopt:{opt autofilter}}filter dropdowns on the used range; its first row is the header{p_end}
 {synopt:{opt filterrange(range)}}filter dropdowns on {it:range}, e.g. {cmd:A3:H164}{p_end}
 {synopt:{opt removefilter}}remove the filter{p_end}
+{synopt:{opt nofilterarrow(cols)}}no filter arrow on these columns of the filter, e.g. spacer columns{p_end}
 {synopt:{opt autofit}}size each used column to its longest value{p_end}
 {synopt:{opt autofitmax(#)}}widest column {opt autofit} may set; default 60{p_end}
 {synopt:{opt colwidth(spec)}}set widths, e.g. {cmd:colwidth(A=30 B:D=12)}{p_end}
@@ -36,7 +39,15 @@
 {synopt:{opt colorscale(range [colors])}}shade cells by value with 2 or 3 colours{p_end}
 {synopt:{opt databar(range [color])}}in-cell bars proportional to value{p_end}
 {synopt:{opt highlight(range op value fill [text])}}fill cells that meet a condition{p_end}
+{synopt:{opt iconset(range style)}}traffic lights, arrows, flags or ratings by value{p_end}
+{synopt:{opt top(range N fill [text])}}fill the N (or N%) highest values{p_end}
+{synopt:{opt bottom(range N fill [text])}}fill the N (or N%) lowest values{p_end}
+{synopt:{opt average(range above|below fill [text])}}fill values above or below the average{p_end}
+
+{syntab:Data entry}
 {synopt:{opt dropdown(range choices)}}in-cell dropdown list{p_end}
+{synopt:{opt validate(range type rule)}}allow only numbers, dates or text lengths within limits{p_end}
+{synopt:{opt prompt(range "text")}}message shown when one of the cells is selected{p_end}
 
 {syntab:Notes}
 {synopt:{opt comment(cell "text")}}add or replace a note (hover pop-up) on a cell; {cmd:""} deletes it{p_end}
@@ -62,6 +73,7 @@
 {synopt:{opt landscape} | {opt portrait}}page orientation{p_end}
 {synopt:{opt fitwidth}}fit all columns on one printed page width{p_end}
 {synopt:{opt printtitles(rows [cols])}}repeat rows and/or columns on every printed page, e.g. {cmd:printtitles(1)} or {cmd:printtitles(1:2 A)}{p_end}
+{synopt:{opt header("text")} | {opt footer("text")}}page header or footer, with page numbers, date, file or sheet name{p_end}
 {synoptline}
 
 
@@ -113,6 +125,12 @@ header row and column A, {cmd:freeze(A1)} removes any freeze.
 {opt zoom(#)} sets the zoom level, from 10 to 400 percent.
 
 {phang}
+{opt hiderows(rows)} and {opt hidecols(cols)} hide rows (such as {cmd:5} or
+{cmd:5:20}) and columns (such as {cmd:E} or {cmd:H:J}) without deleting them,
+e.g. helper columns readers do not need. {opt showrows()} and {opt showcols()}
+show them again. Hidden rows and columns are still read by {helpb import excel}.
+
+{phang}
 {opt tabcolor(color)} colours the sheet tab. {it:color} may be any colour name
 accepted by {helpb putexcel} (for example {cmd:navy}, {cmd:lightgreen}), a hex code
 ({cmd:1F4E79}), or an RGB triple in quotes ({cmd:"31 78 121"}).
@@ -133,6 +151,15 @@ the header, e.g. {cmd:filterrange(A3:H164)}.
 
 {phang}
 {opt removefilter} removes the filter from the sheet.
+
+{phang}
+{opt nofilterarrow(cols)} hides the filter dropdown arrow on the listed columns,
+such as {cmd:E} or {cmd:E I}. A sheet has one filter, covering one continuous
+block of columns, so spacer columns between column groups have to be inside it;
+this keeps them free of arrows. The columns must lie within the filter, added
+in the same call ({opt autofilter} or {opt filterrange()}) or already there.
+Adding {opt autofilter} again later recreates the filter with all arrows, so
+give {opt nofilterarrow()} in that call too.
 
 {phang}
 {opt autofit} sets each used column's width from its longest displayed value.
@@ -192,6 +219,66 @@ or a reference to cells holding the choices, starting with {cmd:=}, e.g.
 {cmd:$A} as a global macro. {cmd:xlpolish} makes the reference fixed ({cmd:$A$1:$A$12}) itself,
 so every dropdown in the range points at the same cells. Typed lists are limited by Excel to
 255 characters; use a cell reference for longer lists.
+
+{phang}
+{opt iconset(range style [reverse percentile iconsonly])} shows an icon in each
+cell according to its value. Styles: {cmd:traffic}, {cmd:trafficrim}, {cmd:arrows},
+{cmd:arrowsgray}, {cmd:flags}, {cmd:signs}, {cmd:symbols}, {cmd:symbolsplain}
+(three icons); {cmd:arrows4}, {cmd:arrowsgray4}, {cmd:traffic4}, {cmd:rating4},
+{cmd:redtoblack4} (four); {cmd:arrows5}, {cmd:arrowsgray5}, {cmd:rating5},
+{cmd:quarters5} (five). The range is split into equal shares of the span from
+lowest to highest value, as in Excel; add {cmd:percentile} to split by
+percentiles instead (equal numbers of cells per icon), {cmd:reverse} to flip
+the icon order, and {cmd:iconsonly} to hide the numbers.
+E.g. {cmd:iconset(B2:B75 traffic)} or {cmd:iconset(C2:C75 arrows5 percentile)}.
+
+{phang}
+{opt top(range N fill [text])} and {opt bottom(range N fill [text])} fill the
+{it:N} highest or lowest values, or the top or bottom {it:N} percent with
+{cmd:N%}, e.g. {cmd:top(B2:B75 10 lightgreen)} or {cmd:bottom(B2:B75 20% pink)}.
+
+{phang}
+{opt average(range above|below fill [text])} fills the values above or below the
+average of the range, e.g. {cmd:average(B2:B75 below FFC7CE 9C0006)}.
+
+{pstd}
+Like {opt highlight()}, these take several rules separated by semicolons.
+
+{pstd}
+{it:Rule order.} When several rules apply to the same cells and both change how
+a cell looks (a colour scale and a highlight, say), the rule higher in Excel's
+list wins. As when adding rules by hand in Excel, the rules from each
+{cmd:xlpolish} call go above the rules already in the sheet, so a highlight
+added later shows over an earlier colour scale. Within one call, {opt highlight()},
+{opt top()}, {opt bottom()} and {opt average()} go above {opt colorscale()},
+{opt databar()} and {opt iconset()}. The order can be changed in Excel under
+Home > Conditional Formatting > Manage Rules.
+
+{dlgtab:Data entry}
+
+{phang}
+{opt validate(range type rule ["message"])} lets only suitable values be typed
+into the cells. {it:type} is {cmd:whole} (whole numbers), {cmd:decimal} (any
+number), {cmd:date} (dates written {cmd:YYYY-MM-DD}) or {cmd:length} (number of
+characters of text). {it:rule} is {cmd:between} {it:a b}, {cmd:notbetween} {it:a b},
+or one of {cmd:==} {cmd:!=} {cmd:>} {cmd:>=} {cmd:<} {cmd:<=} followed by a value.
+Empty cells are always allowed. A wrong entry is refused with a message such as
+"Enter a number from 0 to 100."; give your own as the last item, in quotes.
+Examples: {cmd:validate(B2:B200 decimal between 0 100)},
+{cmd:validate(C2:C200 whole >= 1)},
+{cmd:validate(D2:D200 date between 2020-01-01 2026-12-31)},
+{cmd:validate(F2:F200 length <= 500 "Please keep comments under 500 characters")}.
+
+{phang}
+{opt prompt(range "text")} shows a short message whenever one of the cells is
+selected, e.g. {cmd:prompt(B2:B200 "Enter the 2025 value in local currency")}.
+If the same cells have a dropdown or validation rule, the message is added to it.
+
+{pstd}
+Excel allows one dropdown or validation rule per cell. Giving
+{opt dropdown()}, {opt validate()} or {opt prompt()} on exactly the same range as
+an existing rule replaces it (keeping its message); a range that only partly
+overlaps an existing rule is refused, with a message saying which.
 
 {dlgtab:Notes}
 
@@ -314,6 +401,15 @@ run to as many pages tall as needed.
 {opt printtitles(rows [cols])} repeats rows (such as {cmd:1} or {cmd:1:2}) and/or
 columns (such as {cmd:A} or {cmd:A:B}) on every printed page.
 
+{phang}
+{opt header("text")} and {opt footer("text")} set the text printed at the top or
+bottom of every page. One section is centred; three sections separated by
+{cmd:|} go left, centre and right. These placeholders are filled in by Excel:
+{cmd:[page]}, {cmd:[pages]}, {cmd:[date]}, {cmd:[time]}, {cmd:[file]} and
+{cmd:[sheet]}. E.g. {cmd:footer("[file] | Page [page] of [pages] | [date]")}.
+{cmd:header("")} or {cmd:footer("")} removes it. ({cmd:putexcel} can set headers
+and footers from Stata 18; {cmd:xlpolish} also works on Stata 16 and 17.)
+
 
 {title:Examples}
 
@@ -340,6 +436,14 @@ columns (such as {cmd:A} or {cmd:A:B}) on every printed page.
 {phang2}{cmd:. xlpolish using "template.xlsx", sheet("Form") dropdown(B2:B200 =Lists!A1:A3) ///}{p_end}
 {phang2}{cmd:      unlock(B2:C200) protect password(team2026)}{p_end}
 {phang2}{cmd:. xlpolish using "template.xlsx", sheet("Lists") hidesheet}{p_end}
+
+{pstd}A scored table: icons, top 10, a footer with page numbers, and a hidden helper column{p_end}
+{phang2}{cmd:. xlpolish using "scores.xlsx", iconset(C2:C164 traffic) top(B2:B164 10 lightgreen) ///}{p_end}
+{phang2}{cmd:      footer("[file] | Page [page] of [pages] | [date]") hidecols(H)}{p_end}
+
+{pstd}Score entry with a range check and an instruction{p_end}
+{phang2}{cmd:. xlpolish using "template.xlsx", validate(C2:C200 decimal between 0 100) ///}{p_end}
+{phang2}{cmd:      prompt(C2:C200 "Enter a score from 0 to 100") unlock(C2:C200) protect}{p_end}
 
 {pstd}Undo view settings{p_end}
 {phang2}{cmd:. xlpolish using "cars.xlsx", freeze(A1) showgrid tabcolor(none) removefilter}{p_end}
