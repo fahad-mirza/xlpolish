@@ -9,7 +9,7 @@ hidden sheets and print setup, all from one command in your do-file.
 
 ## See it in action
 
-https://github.com/user-attachments/assets/ab969b24-f1f4-451a-b0de-7d4a97db2d25
+https://github.com/user-attachments/assets/f05ead79-99b2-41e3-aaa1-5b083cb506c0
 
 
 ## What you need
